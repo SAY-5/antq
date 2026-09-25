@@ -9,21 +9,14 @@
 
 (defn ensure-git-https-url
   [url]
-  (if-not (str/starts-with? url "git@")
-    (-> url
-        (str/replace #"\.git$" "")
-        (ensure-tail-slash))
-    (let [[_ s] (str/split url #"@" 2)
-          [domain s] (str/split s #":" 2)
-          ;; Malformed SCM URLs may use a slash instead of a colon between
-          ;; the host and path (e.g. git@github.com/foo/bar.git), in which
-          ;; case there is no second segment to split on.
-          [domain s] (if (some? s)
-                       [domain s]
-                       (str/split domain #"/" 2))
-          path (str/replace (or s "") #"\.git$" "")]
-      (-> (format "https://%s/%s" domain path)
-          (ensure-tail-slash)))))
+  (let [url (str/replace url #"\.git$" "")
+        url (if-not (str/starts-with? url "git@")
+              url
+              ;; convert: git@host:path
+              ;; or: malformed git@host/path
+              (let [[host path] (str/split (subs url 4) #"[:/]" 2)]
+                (str "https://" host "/" path)))]
+    (ensure-tail-slash url)))
 
 (defn ensure-https
   [url]
